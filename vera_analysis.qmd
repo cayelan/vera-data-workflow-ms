@@ -1,0 +1,112 @@
+---
+title: "VERA4cast Forecast Skill: FLARE vs. Climatology"
+format:
+  html:
+    toc: true
+    code-fold: true
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+Compares VERA4cast forecast skill (CRPS) between FLARE (daily data assimilation) and a climatology null model at site `fcre`.
+
+```{r}
+library(tidyverse)
+```
+
+## Load data
+
+Public, anonymous-access parquet archive of VERA4cast forecast scores, read directly from S3/OSN without downloading.
+
+```{r}
+all_results <- arrow::open_dataset("s3://anonymous@bio230121-bucket01/vera4cast/scores/bundled-parquet/project_id=vera4cast?endpoint_override=amnh1.osn.mghpcc.org")
+df <- all_results |>
+  dplyr::filter(model_id %in% c("climatology", "glm_aed_flare_v3"),
+         variable %in% c("Temp_C_mean", "Chla_ugL_mean", "Secchi_m_sample", "DO_mgL_mean"),
+         site_id == "fcre") |>
+  dplyr::collect()
+```
+
+## Clean and pair forecasts
+
+Relabels variables/models for plotting (newlines in `model_id` keep facet/legend labels compact), computes forecast horizon in days, and restricts to horizons of 30 days or less. Pivoting wide then back to long drops rows without a score from *both* models, giving a fair paired comparison at every horizon/variable.
+
+```{r}
+cleaned_df <- df  |>
+  mutate(variable = fct_relevel(variable, "Temp_C_mean", "DO_mgL_mean", "Chla_ugL_mean", "Secchi_m_sample"),
+         variable = fct_recode(variable,
+                       "Water temperature (°C)" = "Temp_C_mean",
+                       "Dissolved oxygen (mg/L)" = "DO_mgL_mean",
+                        "Chlorophyll-a (μg/L)" = "Chla_ugL_mean",
+                        "Secchi depth (m)" = "Secchi_m_sample"),
+         model_id = ifelse(model_id == "glm_aed_flare_v3", "FLARE\ndaily data\nassimilation", "climatology\nnull\n")) |>
+  mutate(horizon = as.numeric(datetime - reference_datetime) / (60*60*24)) |>
+  filter(horizon <= 30) |>
+  select(model_id, reference_datetime, horizon, crps, variable) |>
+  group_by(model_id, reference_datetime, horizon, variable) |>
+  slice(1) |>
+  pivot_wider(names_from = model_id, values_from = crps) |>
+  filter(!is.na(`FLARE\ndaily data\nassimilation`) & !is.na(`climatology\nnull\n`)) |>
+  pivot_longer(4:5, names_to = "model_id", values_to = "crps") |>
+  ungroup()
+```
+
+## Summarize
+
+Summarize by horizon for each model and variable
+
+```{r}
+summary_df <-  cleaned_df |>
+  group_by(model_id, horizon, variable) |>
+  summarize(mean_crps = mean(crps, na.rm = TRUE),
+            n = n())
+```
+
+Max sample size backing any `mean_crps` value.
+
+```{r}
+summary_df |>
+  ungroup() |>
+  summarise(max = max(n))
+```
+
+Date range of `reference_datetime` covered by the paired data.
+
+```{r}
+cleaned_df |>
+  summarize(min = min(reference_datetime),
+            max = max(reference_datetime))
+```
+
+## Skill comparison
+
+For each variable, the longest horizon at which FLARE still beats climatology on average (lower CRPS = better forecast skill).
+
+```{r}
+summary_df |>
+  select(-n) |>
+  pivot_wider(names_from = model_id, values_from = mean_crps) |>
+  mutate(FLARE_better = ifelse(`FLARE\ndaily data\nassimilation` < `climatology\nnull\n`, 1, 0)) |>
+  filter(FLARE_better == 1) |>
+  group_by(variable) |>
+  summarize(max = max(horizon))
+```
+
+## Figure 3
+
+Mean CRPS vs. forecast horizon, one facet per variable.
+
+```{r}
+p <- summary_df |>
+  ggplot(aes(x = horizon, y = mean_crps, color = model_id)) +
+  geom_line() +
+  facet_wrap(~variable, scales = "free") +
+  labs(x = "Days in future", y = "Mean Continuous Ranked Probability Score", color = "Model type") +
+  theme_bw()
+
+p
+
+ggsave("figure_3.png", p, width = 6, height = 4, dpi = 300)
+```
