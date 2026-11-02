@@ -1,4 +1,4 @@
-# Forecast analysis code for Carey et al.: A real-time, automated ecological monitoring workflow and data publication program to enable daily ecosystem forecasting 
+# Forecast analysis code for "A real-time, automated ecological monitoring workflow and data publication program to enable daily ecosystem forecasting" by Carey et al. 
 
 R project for analyzing VERA forecast challenge scores, comparing the FLARE data-assimilation model against a climatology null model. The code in this repository can be used to generate the forecast analysis figure in "A real-time, automated ecological monitoring workflow and data publication program to enable daily ecosystem forecasting" by Carey et al.  
 
