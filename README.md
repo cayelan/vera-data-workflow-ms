@@ -1,6 +1,6 @@
 # data-workflow-ms
 
-R project for analyzing VERA forecast challenge scores, comparing the FLARE data-assimilation model against a climatology null model.
+R project for analyzing VERA forecast challenge scores, comparing the FLARE data-assimilation model against a climatology null model. The code in this repository can be used to generate the forecast analysis figure in "A real-time, automated ecological monitoring workflow and data publication program to enable daily ecosystem forecasting" by Carey et al.  
 
 ## Files
 
@@ -12,7 +12,7 @@ R project for analyzing VERA forecast challenge scores, comparing the FLARE data
 
 ## `vera_analysis.qmd`
 
-Quarto document (HTML output, with a table of contents and folded code chunks) that pulls forecast scores from the VERA4cast bundled-parquet archive (hosted on OSN/S3) and compares forecast skill between two models at site `fcre`.
+Quarto document (HTML output, with a table of contents and folded code chunks) that pulls forecast scores from the VERA4cast bundled-parquet archive (hosted on OSN/S3) and compares forecast skill between two models at site `fcre` (Falling Creek Reservoir, Virginia, USA).
 
 **Sections:**
 
